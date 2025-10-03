@@ -1,0 +1,53 @@
+//
+//  NetworkManager.swift
+//  MovieFlix
+//
+//  Created by Emre Simsek on 3.10.2025.
+//
+
+import Alamofire
+import Foundation
+
+final class NetworkManager: NetworkManagerProtocol{
+    private let config: NetworkConfig
+    private let decoder: JSONDecoder
+
+    init(config: NetworkConfig, decoder: JSONDecoder = JSONDecoder()) {
+        self.config = config
+        self.decoder = decoder
+        self.decoder.dateDecodingStrategy = .iso8601
+    }
+
+    /// Sends a network request and decodes the response into the specified type.
+    /// - Parameters:
+    ///   - path: Network path conforming to `NetworkPathProtocol`
+    ///   - method: HTTP method to use for the request
+    ///   - type: The type to decode the response into
+    ///   - body: Optional request body conforming to `Encodable`
+    ///   - parameter: Optional URL parameters
+    /// - Returns: A `Result` containing the decoded response or an error
+    func send<T: Decodable & Sendable>(
+        path: NetworkPathProtocol,
+        method: NetworkMethod,
+        type: T.Type,
+        body: Encodable? = nil,
+        parameter: Parameters? = nil
+    ) async -> Result<T, Error> {
+        let url = config.baseURL + path.path
+        let request: DataRequest
+        if let body = body {
+            request = AF.request(url, method: method.alamofireMethod, parameters: body, encoder: JSONParameterEncoder.default)
+        } else {
+            request = AF.request(url, method: method.alamofireMethod, parameters: parameter)
+        }
+        let response = await request.validate()
+            .serializingDecodable(T.self, decoder: decoder)
+            .response
+
+        guard let responseValue = response.value else {
+            return .failure(response.error ?? NetworkError.unknown)
+        }
+
+        return .success(responseValue)
+    }
+}
