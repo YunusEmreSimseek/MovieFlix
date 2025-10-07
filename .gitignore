@@ -11,6 +11,9 @@ build/
 .build/
 Packages/
 
+#Secrets
+Secrets.xconfig
+
 # CocoaPods
 Pods/
 Podfile.lock

@@ -15,7 +15,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         window = UIWindow(windowScene: windowScene)
         let nav = UINavigationController(rootViewController: LoginView())
         NavigationManager.shared.setRootNav(nav)
-        window?.rootViewController = nav
+        window?.rootViewController = MainTabBarViewController()
         window?.makeKeyAndVisible()
     }
 

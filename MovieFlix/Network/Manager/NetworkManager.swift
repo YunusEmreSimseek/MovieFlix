@@ -8,14 +8,14 @@
 import Alamofire
 import Foundation
 
-final class NetworkManager: NetworkManagerProtocol{
-    private let config: NetworkConfig
-    private let decoder: JSONDecoder
+final class NetworkManager: NetworkManagerProtocol {
+    static let shared = NetworkManager()
+    private let decoder: JSONDecoder = .init()
+    private let session: Session = .default
 
-    init(config: NetworkConfig, decoder: JSONDecoder = JSONDecoder()) {
-        self.config = config
-        self.decoder = decoder
-        self.decoder.dateDecodingStrategy = .iso8601
+    private init(
+    ) {
+        decoder.dateDecodingStrategy = .iso8601
     }
 
     /// Sends a network request and decodes the response into the specified type.
@@ -26,21 +26,27 @@ final class NetworkManager: NetworkManagerProtocol{
     ///   - body: Optional request body conforming to `Encodable`
     ///   - parameter: Optional URL parameters
     /// - Returns: A `Result` containing the decoded response or an error
-    func send<T: Decodable & Sendable>(
+    func send<T: Decodable>(
         path: NetworkPathProtocol,
         method: NetworkMethod,
         type: T.Type,
         body: Encodable? = nil,
         parameter: Parameters? = nil
     ) async -> Result<T, Error> {
-        let url = config.baseURL + path.path
+        let url = "\(path.baseURL)\(path.value)"
+        var headers: HTTPHeaders = ["Accept": "application/json"]
+        if let token = Bundle.main.object(forInfoDictionaryKey: "API_BEARER_TOKEN") as? String {
+            headers.add(.authorization(bearerToken: token))
+        }
+
         let request: DataRequest
         if let body = body {
-            request = AF.request(url, method: method.alamofireMethod, parameters: body, encoder: JSONParameterEncoder.default)
+            request = session.request(url, method: method.alamofireMethod, parameters: body, encoder: JSONParameterEncoder.default, headers: headers)
         } else {
-            request = AF.request(url, method: method.alamofireMethod, parameters: parameter)
+            request = session.request(url, method: method.alamofireMethod, parameters: parameter, headers: headers)
         }
-        let response = await request.validate()
+        let response = await request
+            .validate()
             .serializingDecodable(T.self, decoder: decoder)
             .response
 
@@ -48,6 +54,17 @@ final class NetworkManager: NetworkManagerProtocol{
             return .failure(response.error ?? NetworkError.unknown)
         }
 
+        return .success(responseValue)
+    }
+
+    func sendData(path: NetworkPathProtocol, method: NetworkMethod, parameter: Parameters?) async -> Result<Data, Error> {
+        let url = "\(path.baseURL)\(path.value)"
+        let headers = HTTPHeaders([.accept("image/*")])
+        let response = await session.request(url, method: method.alamofireMethod, parameters: parameter, headers: headers)
+            .validate(contentType: ["image/png", "image/jpeg", "image/webp", "image/*"])
+            .serializingData()
+            .response
+        guard let responseValue = response.data else { return .failure(response.error ?? NetworkError.unknown) }
         return .success(responseValue)
     }
 }

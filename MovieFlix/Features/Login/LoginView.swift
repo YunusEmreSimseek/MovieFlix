@@ -46,7 +46,7 @@ final class LoginView: UIViewController {
 
 extension LoginView: LoginViewProtocol {
     func configureView() {
-        view.backgroundColor = .green
+        view.backgroundColor = .systemBackground
     }
 
     func configureSubViews() {
