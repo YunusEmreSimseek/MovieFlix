@@ -12,7 +12,7 @@ build/
 Packages/
 
 #Secrets
-Secrets.xconfig
+Secrets.xcconfig
 
 # CocoaPods
 Pods/
